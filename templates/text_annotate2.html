@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manual Text Annotation</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f0f2f5; margin: 0; padding-top: 20px; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 20px; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .image-container img { max-width: 90vw; max-height: 70vh; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        h2 { margin: 0; color: #333; }
+        form { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: 100%; max-width: 600px; }
+        textarea { font-size: 1.1em; padding: 12px; border: 1px solid #ccc; border-radius: 5px; resize: vertical; min-height: 80px; }
+        button { font-size: 1.2em; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; background-color: #28a745; color: white; transition: background-color 0.2s; }
+        button:hover { background-color: #218838; }
+        .error { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Describe the Highlighted Object</h2>
+        <div class="image-container">
+            <img src="data:image/png;base64,{{ image_base64 }}" alt="Annotated Image: {{ image_name }}">
+        </div>
+        
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <form method="POST">
+            <textarea name="caption" placeholder="Type your description here..." required></textarea>
+            <button type="submit">Save & Next Image</button>
+        </form>
+    </div>
+</body>
+</html>

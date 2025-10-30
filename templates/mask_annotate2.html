@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manual Mask Annotation (Multi-Part)</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f0f2f5; margin: 0; padding-top: 20px; }
+        .container { display: flex; flex-direction: column; align-items: center; gap: 15px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        #viewer { position: relative; cursor: crosshair; }
+        #viewer img { display: block; max-width: 90vw; max-height: 80vh; border-radius: 4px; }
+        #canvas { position: absolute; top: 0; left: 0; }
+        .controls { display: flex; gap: 10px; }
+        .controls button { font-size: 1em; padding: 10px 20px; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; background-color: #f8f9fa; transition: background-color 0.2s; }
+        .controls button:hover { background-color: #e2e6ea; }
+        .controls button.primary { background-color: #007bff; color: white; border-color: #007bff; }
+        .controls button.primary:hover { background-color: #0056b3; }
+        .status { font-size: 1.1em; color: #333; padding: 10px; background: #e9ecef; border-radius: 5px; min-width: 400px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="status" class="status">Drawing the complete mask of object pointed by red circle. ( {{ current_index }} / {{ total_images }} )</div>
+        <div id="viewer">
+            <img id="image" src="{{ url_for('uploaded_file', filename=image_name) }}" alt="Annotation Image">
+            <canvas id="canvas"></canvas>
+        </div>
+        <div class="controls">
+            <button id="undo-btn">Undo Last Point</button>
+            <button id="reset-btn">Reset All Parts</button>
+            <button id="save-btn" class="primary">Save & Continue</button>
+        </div>
+    </div>
+
+<script>
+    const image = document.getElementById('image');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const statusDiv = document.getElementById('status');
+    const undoBtn = document.getElementById('undo-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const saveBtn = document.getElementById('save-btn');
+    
+    const guideCenterX = {{ center_x | default(-1) }};
+    const guideCenterY = {{ center_y | default(-1) }};
+    const masterStartTime = Date.now();
+    let completedParts = [];
+    let currentPoints = [];
+    let imageDimensions = {};
+    const CLOSE_THRESHOLD = 15;
+
+    function drawGuideDot() {
+        if (guideCenterX > -1 && guideCenterY > -1) {
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            ctx.beginPath();
+            ctx.arc(guideCenterX, guideCenterY, 10, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+    }
+
+    image.onload = () => {
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        canvas.style.width = `${image.width}px`;
+        canvas.style.height = `${image.height}px`;
+        imageDimensions = { w: image.naturalWidth, h: image.naturalHeight };
+        drawGuideDot();
+    };
+    
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGuideDot();
+
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+        completedParts.forEach(part => {
+            if (part.length < 3) return;
+            ctx.beginPath();
+            ctx.moveTo(part[0].x, part[0].y);
+            for(let i = 1; i < part.length; i++) ctx.lineTo(part[i].x, part[i].y);
+            ctx.closePath();
+            ctx.fill();
+        });
+
+        if (currentPoints.length === 0) return;
+        ctx.strokeStyle = '#00FFFF';
+        ctx.lineWidth = 2;
+        ctx.fillStyle = '#FF00FF';
+        const pointSize = 5;
+
+        ctx.beginPath();
+        ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
+        for (let i = 1; i < currentPoints.length; i++) ctx.lineTo(currentPoints[i].x, currentPoints[i].y);
+        ctx.stroke();
+
+        currentPoints.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, pointSize, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+        currentPoints.push({ x, y });
+
+        if (currentPoints.length >= 3) {
+            const first = currentPoints[0];
+            const last = currentPoints[currentPoints.length - 1];
+            const distance = Math.sqrt(Math.pow(first.x - last.x, 2) + Math.pow(first.y - last.y, 2));
+            if (distance < CLOSE_THRESHOLD) {
+                completedParts.push(currentPoints);
+                currentPoints = [];
+            }
+        }
+        draw();
+    });
+
+    undoBtn.addEventListener('click', () => {
+        if (currentPoints.length > 0) {
+            currentPoints.pop();
+            draw();
+        }
+    });
+
+    resetBtn.addEventListener('click', () => {
+        completedParts = [];
+        currentPoints = [];
+        draw();
+    });
+
+    saveBtn.addEventListener('click', async () => {
+        if (completedParts.length === 0 && currentPoints.length < 3) {
+             alert('Please complete at least one part before saving.');
+             return;
+        }
+
+        if (currentPoints.length >= 3) {
+            completedParts.push(currentPoints);
+            currentPoints = [];
+        }
+
+        const maskDurationMs = Date.now() - masterStartTime;
+        const imageStem = '{{ image_name.split(".") | first }}';
+        
+        const payload = {
+            parts: completedParts.map(part => part.map(p => [p.x, p.y])),
+            dimensions: imageDimensions,
+            mask_duration: maskDurationMs,
+            master_start_time: masterStartTime
+        };
+
+        statusDiv.textContent = 'Saving...';
+        try {
+            const response = await fetch(`/api/save_mask/${imageStem}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error('Server responded with an error.');
+            
+            const result = await response.json();
+            if (result.success) {
+                window.location.href = result.redirect_url;
+            } else {
+                throw new Error(result.error || 'Failed to save.');
+            }
+        } catch (err) {
+            statusDiv.textContent = `Error: ${err.message}`;
+            alert(`Could not save the mask: ${err.message}`);
+        }
+    });
+</script>
+</body>
+</html>
