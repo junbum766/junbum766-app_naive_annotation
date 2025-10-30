@@ -26,15 +26,15 @@ import time
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-MASK_FOLDER = os.path.join(BASE_DIR, 'masks')
+MASK_FOLDER = os.path.join(BASE_DIR, 'masks') 
 
-# ✨ 1. 영구 저장소의 기본 경로를 설정합니다 (Render에서 설정한 Mount Path).
-DATA_DIR = '/data/annotations'
+# ✨ 1. 이 부분만 수정하면 됩니다.
+# 영구 저장소의 기본 경로를 Render에서 수정한 Mount Path와 동일하게 맞춥니다.
+DATA_DIR = '/var/data/annotations' 
 ANNOTATED_FOLDER = os.path.join(DATA_DIR, 'annotated_masks2')
 CAPTION_FOLDER = os.path.join(DATA_DIR, 'captions2')
 
-# --- 폴더 생성 (이제 영구 디스크 내에 폴더를 생성합니다) ---
-# UPLOAD_FOLDER와 MASK_FOLDER는 코드와 함께 배포되므로 여기서 생성할 필요가 없습니다.
+# --- 폴더 생성 (이하 코드는 변경 없음) ---
 os.makedirs(ANNOTATED_FOLDER, exist_ok=True)
 os.makedirs(CAPTION_FOLDER, exist_ok=True)
 
