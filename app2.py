@@ -102,7 +102,7 @@ def index():
             return redirect(url_for('text_annotate', image_name=img_file))
 
     print(f" -> User '{user_id}' has completed all annotations!")
-    return "<h1>All annotations are complete!</h1>"
+    return f"<h1>All annotations are complete! Thank you.</h1><p>Your completion code is: <strong>{user_id}</strong></p>"
 
 @app.route('/mask_annotate/<image_name>')
 def mask_annotate(image_name):
