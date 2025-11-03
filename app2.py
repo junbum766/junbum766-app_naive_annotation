@@ -30,7 +30,8 @@ MASK_FOLDER = os.path.join(BASE_DIR, 'masks')
 
 # ✨ 1. 이 부분만 수정하면 됩니다.
 # 영구 저장소의 기본 경로를 Render에서 수정한 Mount Path와 동일하게 맞춥니다.
-DATA_DIR = '/var/data/annotations' 
+# DATA_DIR = '/var/data/annotations' 
+DATA_DIR = 'data/annotations' 
 ANNOTATED_FOLDER = os.path.join(DATA_DIR, 'annotated_masks2')
 CAPTION_FOLDER = os.path.join(DATA_DIR, 'captions2')
 
